@@ -1,0 +1,8 @@
+node_modules
+dist
+.env
+npm-debug.log
+yarn.lock
+pnpm-lock.yaml
+.DS_Store
+.git

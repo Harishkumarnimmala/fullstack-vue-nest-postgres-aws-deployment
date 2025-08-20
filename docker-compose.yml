@@ -1,0 +1,42 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pg-demo
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: appuser
+      POSTGRES_PASSWORD: apppass
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/sql:/docker-entrypoint-initdb.d:ro
+
+  frontend:
+    image: demo-frontend:latest
+    container_name: web-frontend
+    depends_on:
+      - backend
+    ports:
+      - '5173:80'   # open the site at http://localhost:5173
+    restart: unless-stopped
+
+
+  backend:
+    image: demo-backend:latest        # the image you just built
+    container_name: api-backend
+    environment:
+      PORT: '3000'
+      DB_HOST: postgres               # <— talk to the postgres service by name
+      DB_PORT: '5432'
+      DB_NAME: appdb
+      DB_USER: appuser
+      DB_PASSWORD: apppass
+    depends_on:
+      - postgres
+    ports:
+      - '3000:3000'                   # expose API on localhost:3000
+    restart: unless-stopped
+
+volumes:
+  pgdata:
