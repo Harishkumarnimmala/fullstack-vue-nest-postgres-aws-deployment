@@ -18,16 +18,16 @@ services:
     depends_on:
       - backend
     ports:
-      - '5173:80'   # open the site at http://localhost:5173
+      - '5173:80'   # Frontend runs at http://localhost:5173
     restart: unless-stopped
 
 
   backend:
-    image: demo-backend:latest        # the image you just built
+    image: demo-backend:latest 
     container_name: api-backend
     environment:
       PORT: '3000'
-      DB_HOST: postgres               # <— talk to the postgres service by name
+      DB_HOST: postgres               # <— talking to the postgres service by name
       DB_PORT: '5432'
       DB_NAME: appdb
       DB_USER: appuser
