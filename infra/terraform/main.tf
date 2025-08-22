@@ -12,7 +12,6 @@ provider "aws" {
   region = var.region
 }
 
-
 # VPC with 2x public + 2x private subnets across 2 AZs
 
 module "vpc" {
@@ -572,6 +571,17 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
+  origin {
+  domain_name = aws_lb.api.dns_name
+  origin_id   = "alb-origin"
+  custom_origin_config {
+    http_port              = 80
+    https_port             = 443
+    origin_protocol_policy = "http-only"
+    origin_ssl_protocols   = ["TLSv1.2"]
+  }
+  }
+
   default_cache_behavior {
     target_origin_id       = "s3-frontend"
     viewer_protocol_policy = "redirect-to-https"
@@ -586,6 +596,26 @@ resource "aws_cloudfront_distribution" "frontend" {
       }
     }
   }
+
+  ordered_cache_behavior {
+  path_pattern           = "/api/*"
+  target_origin_id       = "alb-origin"
+  viewer_protocol_policy = "redirect-to-https"
+  allowed_methods        = ["GET", "HEAD", "OPTIONS"]
+  cached_methods         = ["GET", "HEAD"]
+
+  # don't cache API responses
+  min_ttl     = 0
+  default_ttl = 0
+  max_ttl     = 0
+
+  forwarded_values {
+    query_string = true
+    headers      = ["*"]
+    cookies { forward = "none" }
+  }
+  }
+
 
   restrictions {
     geo_restriction { restriction_type = "none" }
