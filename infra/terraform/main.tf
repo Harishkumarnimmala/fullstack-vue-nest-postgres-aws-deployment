@@ -582,21 +582,6 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
   }
 
-  default_cache_behavior {
-    target_origin_id       = "s3-frontend"
-    viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
-    cached_methods         = ["GET", "HEAD"]
-
-    # Required by CloudFront unless you use a cache_policy_id
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
-  }
-
   ordered_cache_behavior {
   path_pattern           = "/api/*"
   target_origin_id       = "alb-origin"
@@ -614,6 +599,21 @@ resource "aws_cloudfront_distribution" "frontend" {
     headers      = ["*"]
     cookies { forward = "none" }
   }
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+
+    # Required by CloudFront unless you use a cache_policy_id
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
   }
 
 
