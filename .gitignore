@@ -42,16 +42,6 @@ docker-compose.*.yml
 # if someone bind-mounts a pgdata folder locally (we use a named volume by default)
 pgdata/
 
-# ---- Terraform (infra/) ----
-infra/terraform/.terraform/
-infra/terraform/*.tfstate
-infra/terraform/*.tfstate.*
-infra/terraform/crash.log
-infra/terraform/*_override.tf
-infra/terraform/*_override.tf.json
-infra/terraform/override.tf
-infra/terraform/override.tf.json
-infra/terraform/terraform.tfplan
 # ---- Terraform (ignore anywhere in repo) ----
 .terraform/
 *.tfstate
@@ -70,6 +60,6 @@ terraform.tfplan
 *.tfplan
 .terraformrc
 terraform.rc
-# keep the lockfile(s) under version control
 !.terraform.lock.hcl
-
+# If you keep example vars in Git, un-comment the next line:
+# !*.tfvars.example
