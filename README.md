@@ -15,3 +15,5 @@ find . -type d -name '.terraform' -prune -exec rm -rf {} +
 find . -type f -name 'terraform.tfstate' -delete
 find . -type f -name 'terraform.tfstate.backup' -delete
 find . -type f -name '.terraform.lock.hcl' -delete
+
+# Note : Please check the connection status from AWS codestar to our github
