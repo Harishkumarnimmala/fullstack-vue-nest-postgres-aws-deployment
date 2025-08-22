@@ -15,7 +15,6 @@ resource "aws_security_group" "alb" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -36,7 +35,6 @@ resource "aws_security_group" "ecs" {
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -94,21 +92,39 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+# Task execution role (pulls images, writes logs, reads Secrets)
 resource "aws_iam_role" "task_exec" {
-  name               = "${var.project}-ecs-task-exec"
+  name = "${var.project}-ecs-task-exec"
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [{
-      Effect   = "Allow",
-      Principal = { Service = "ecs-tasks.amazonaws.com" },
-      Action   = "sts:AssumeRole"
-    }]
+    Statement = [{ Effect = "Allow", Principal = { Service = "ecs-tasks.amazonaws.com" }, Action = "sts:AssumeRole" }]
   })
 }
 
 resource "aws_iam_role_policy_attachment" "task_exec_attach" {
   role       = aws_iam_role.task_exec.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Allow this execution role to read the specific secrets we pass in
+data "aws_iam_policy_document" "secrets_access" {
+  count = length(var.secrets_manager_arns) > 0 ? 1 : 0
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = var.secrets_manager_arns
+  }
+}
+
+resource "aws_iam_policy" "secrets_access" {
+  count  = length(var.secrets_manager_arns) > 0 ? 1 : 0
+  name   = "${var.project}-ecs-secrets-access"
+  policy = data.aws_iam_policy_document.secrets_access[0].json
+}
+
+resource "aws_iam_role_policy_attachment" "task_exec_secrets" {
+  count      = length(var.secrets_manager_arns) > 0 ? 1 : 0
+  role       = aws_iam_role.task_exec.name
+  policy_arn = aws_iam_policy.secrets_access[0].arn
 }
 
 resource "aws_ecs_task_definition" "backend" {
@@ -128,6 +144,7 @@ resource "aws_ecs_task_definition" "backend" {
         { containerPort = var.container_port, hostPort = var.container_port }
       ],
       environment = [for k, v in var.env_vars : { name = k, value = v }],
+      secrets     = [for k, v in var.secret_env_vars : { name = k, valueFrom = v }],
       logConfiguration = {
         logDriver = "awslogs",
         options = {
@@ -160,4 +177,50 @@ resource "aws_ecs_service" "backend" {
   }
 
   depends_on = [aws_lb_listener.http]
+}
+
+# --- Application Auto Scaling for ECS service (DesiredCount) ---
+resource "aws_appautoscaling_target" "ecs_service" {
+  count              = var.enable_autoscaling ? 1 : 0
+  max_capacity       = var.autoscaling_max_capacity
+  min_capacity       = var.autoscaling_min_capacity
+  resource_id        = "service/${aws_ecs_cluster.this.name}/${aws_ecs_service.backend.name}"
+  scalable_dimension = "ecs:service:DesiredCount"
+  service_namespace  = "ecs"
+}
+
+resource "aws_appautoscaling_policy" "cpu_target" {
+  count              = var.enable_autoscaling ? 1 : 0
+  name               = "${var.project}-ecs-cpu-tt"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_service[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_service[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_service[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageCPUUtilization"
+    }
+    target_value       = var.autoscaling_cpu_target
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 60
+  }
+}
+
+resource "aws_appautoscaling_policy" "mem_target" {
+  count              = var.enable_autoscaling ? 1 : 0
+  name               = "${var.project}-ecs-mem-tt"
+  policy_type        = "TargetTrackingScaling"
+  resource_id        = aws_appautoscaling_target.ecs_service[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.ecs_service[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.ecs_service[0].service_namespace
+
+  target_tracking_scaling_policy_configuration {
+    predefined_metric_specification {
+      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+    }
+    target_value       = var.autoscaling_memory_target
+    scale_in_cooldown  = 60
+    scale_out_cooldown = 60
+  }
 }

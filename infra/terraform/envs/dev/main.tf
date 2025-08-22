@@ -20,32 +20,47 @@ module "ecr" {
 
 # Compute (serverless containers)
 module "compute_ecs_alb" {
-  count             = var.compute_mode == "ecs_fargate" ? 1 : 0
-  source            = "../../modules/compute_ecs_alb"
-  project           = var.project
-  environment       = var.environment
-  region            = var.region
-  vpc_id            = module.network.vpc_id
-  public_subnet_ids = module.network.public_subnet_ids
-  container_port    = 3000
+  count                     = var.compute_mode == "ecs_fargate" ? 1 : 0
+  source                    = "../../modules/compute_ecs_alb"
+  project                   = var.project
+  environment               = var.environment
+  region                    = var.region
+  vpc_id                    = module.network.vpc_id
+  public_subnet_ids         = module.network.public_subnet_ids
+  container_port            = 3000
+  image_url                 = "${module.ecr.backend_repository_url}:latest"
+  desired_count             = 1
+  enable_autoscaling        = true
+  autoscaling_min_capacity  = 1
+  autoscaling_max_capacity  = 4
+  autoscaling_cpu_target    = 50
+  autoscaling_memory_target = 70
 
-  # use ECR repo created above
-  image_url     = "${module.ecr.backend_repository_url}:latest"
-  desired_count = 1
-
+  # Plain envs (no secrets here)
   env_vars = {
-    PORT        = "3000"
-    DB_HOST     = var.db_mode == "rds" ? module.db_rds_postgres[0].address : ""
-    DB_PORT     = "5432"
-    DB_NAME     = "appdb"
-    DB_USER     = var.db_user
-    DB_PASSWORD = var.db_password
-    DB_SSL      = "true"
+    PORT    = "3000"
+    DB_HOST = var.db_mode == "rds" ? module.db_rds_postgres[0].address : ""
+    DB_PORT = "5432"
+    DB_NAME = "appdb"
+    DB_SSL  = "true"
   }
+
+  # Secret-backed envs
+  secret_env_vars = {
+    DB_USER     = module.secrets.db_user_arn
+    DB_PASSWORD = module.secrets.db_password_arn
+  }
+
+  # Grant execution role read access to these secrets
+  secrets_manager_arns = [
+    module.secrets.db_user_arn,
+    module.secrets.db_password_arn
+  ]
 
   healthcheck_path = "/healthz"
   tags             = local.common_tags
 }
+
 
 # DB (RDS)
 module "db_rds_postgres" {
@@ -120,6 +135,16 @@ module "cicd_frontend" {
   distribution_id      = module.cdn.distribution_id
   log_group_name       = module.compute_ecs_alb[0].log_group_name
 }
+
+module "secrets" {
+  source      = "../../modules/secrets"
+  project     = var.project
+  environment = var.environment
+  db_user     = var.db_user
+  db_password = var.db_password
+  tags        = local.common_tags
+}
+
 
 
 # Helpful outputs

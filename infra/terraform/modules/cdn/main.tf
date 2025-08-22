@@ -32,6 +32,25 @@ resource "aws_s3_bucket_policy" "frontend" {
   })
 }
 
+# CloudFront Function: strip "/api" prefix before forwarding to ALB
+resource "aws_cloudfront_function" "strip_api_prefix" {
+  name    = "${var.project}-${var.environment}-strip-api"
+  runtime = "cloudfront-js-1.0"
+  comment = "Strip /api prefix before forwarding to ALB"
+  publish = true
+  code    = <<-JS
+function handler(event) {
+  var req = event.request;
+  if (req.uri === "/api") {
+    req.uri = "/";
+  } else if (req.uri.startsWith("/api/")) {
+    req.uri = req.uri.substring(4); // drop "/api"
+  }
+  return req;
+}
+JS
+}
+
 resource "aws_cloudfront_distribution" "this" {
   enabled             = true
   comment             = "${var.project} frontend"
@@ -59,6 +78,7 @@ resource "aws_cloudfront_distribution" "this" {
     }
   }
 
+  # /api/* -> ALB origin, with viewer-request function to strip "/api"
   ordered_cache_behavior {
     path_pattern           = "/api/*"
     target_origin_id       = "alb-origin"
@@ -73,17 +93,22 @@ resource "aws_cloudfront_distribution" "this" {
     forwarded_values {
       query_string = true
       headers      = ["*"]
-
       cookies {
         forward = "none"
       }
     }
+
+    function_association {
+      event_type   = "viewer-request"
+      function_arn = aws_cloudfront_function.strip_api_prefix.arn
+    }
   }
 
+  # default: static site from S3 bucket
   default_cache_behavior {
     target_origin_id       = "s3-frontend"
     viewer_protocol_policy = "redirect-to-https"
-    allowed_methods        = ["GET", "HEAD"]
+    allowed_methods        = ["GET","HEAD","OPTIONS","PUT","POST","PATCH","DELETE"]
     cached_methods         = ["GET", "HEAD"]
 
     forwarded_values {
