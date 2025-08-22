@@ -2,12 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { Pool } from 'pg';
 
 // Create a single shared connection pool using environment variables
+const useSsl =
+  (process.env.DB_SSL || 'false').toLowerCase() === 'true';
+
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 5432),
   database: process.env.DB_NAME || 'appdb',
   user: process.env.DB_USER || 'appuser',
   password: process.env.DB_PASSWORD || 'apppass',
+  // Enable TLS for RDS when requested. For a stricter setup, provide the RDS CA instead of rejectUnauthorized:false.
+  ssl: useSsl ? { rejectUnauthorized: false } : undefined,
 });
 
 @Injectable()
