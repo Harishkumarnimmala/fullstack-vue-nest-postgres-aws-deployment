@@ -235,6 +235,7 @@ resource "aws_lb_target_group" "api" {
     timeout             = 5
     matcher             = "200"
   }
+
   tags = { Name = "${var.project}-tg", Project = var.project, Environment = "dev" }
 }
 
@@ -514,6 +515,263 @@ resource "aws_codepipeline" "backend" {
     Project     = var.project
     Environment = "dev"
   }
+}
+
+# S3 bucket to host built frontend (private, CF-only)
+resource "aws_s3_bucket" "frontend" {
+  bucket        = "${var.project}-frontend-${var.account_id}-${var.region}"
+  force_destroy = true
+  tags = { Project = var.project, Environment = "dev" }
+}
+
+resource "aws_s3_bucket_versioning" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  versioning_configuration { status = "Enabled" }
+}
+
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket                  = aws_s3_bucket.frontend.id
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# CloudFront OAI (simple and reliable)
+resource "aws_cloudfront_origin_access_identity" "oai" {
+  comment = "${var.project} frontend OAI"
+}
+
+# Allow CloudFront (OAI) to read from the bucket
+resource "aws_s3_bucket_policy" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Sid       = "AllowCloudFrontRead",
+      Effect    = "Allow",
+      Principal = { CanonicalUser = aws_cloudfront_origin_access_identity.oai.s3_canonical_user_id },
+      Action    = ["s3:GetObject"],
+      Resource  = "${aws_s3_bucket.frontend.arn}/*"
+    }]
+  })
+}
+
+# CloudFront distribution
+resource "aws_cloudfront_distribution" "frontend" {
+  enabled             = true
+  comment             = "${var.project} frontend"
+  default_root_object = "index.html"
+  price_class         = "PriceClass_100"
+
+  origin {
+    domain_name = aws_s3_bucket.frontend.bucket_regional_domain_name
+    origin_id   = "s3-frontend"
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.oai.cloudfront_access_identity_path
+    }
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "s3-frontend"
+    viewer_protocol_policy = "redirect-to-https"
+    allowed_methods        = ["GET", "HEAD"]
+    cached_methods         = ["GET", "HEAD"]
+
+    # Required by CloudFront unless you use a cache_policy_id
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  restrictions {
+    geo_restriction { restriction_type = "none" }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+
+  tags = { Project = var.project, Environment = "dev" }
+}
+
+
+# ----- CodeBuild role (frontend) -----
+resource "aws_iam_role" "codebuild_frontend" {
+  name = "${var.project}-cb-frontend-role"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{ Effect="Allow", Principal={ Service="codebuild.amazonaws.com" }, Action="sts:AssumeRole" }]
+  })
+}
+
+data "aws_iam_policy_document" "codebuild_frontend_inline" {
+  # CloudWatch Logs
+  statement {
+    actions   = ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"]
+    resources = ["*"]
+  }
+  # S3 deploy to frontend bucket and read/write artifacts bucket
+  statement {
+    actions = ["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket","s3:GetBucketLocation"]
+    resources = [
+      aws_s3_bucket.frontend.arn,
+      "${aws_s3_bucket.frontend.arn}/*",
+      aws_s3_bucket.codepipeline_artifacts.arn,
+      "${aws_s3_bucket.codepipeline_artifacts.arn}/*",
+    ]
+  }
+  # CloudFront invalidation
+  statement {
+    actions   = ["cloudfront:CreateInvalidation","cloudfront:GetDistribution","cloudfront:GetInvalidation","cloudfront:ListDistributions"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "codebuild_frontend_inline" {
+  role   = aws_iam_role.codebuild_frontend.name
+  policy = data.aws_iam_policy_document.codebuild_frontend_inline.json
+}
+
+# ----- CodePipeline role (frontend) -----
+resource "aws_iam_role" "codepipeline_frontend" {
+  name = "${var.project}-cp-frontend-role"
+  assume_role_policy = jsonencode({
+    Version="2012-10-17",
+    Statement=[{ Effect="Allow", Principal={ Service="codepipeline.amazonaws.com" }, Action="sts:AssumeRole" }]
+  })
+}
+
+data "aws_iam_policy_document" "codepipeline_frontend_inline" {
+  # read/write artifacts bucket
+  statement {
+    actions   = ["s3:GetObject","s3:PutObject","s3:GetBucketVersioning","s3:GetObjectVersion","s3:ListBucket"]
+    resources = [aws_s3_bucket.codepipeline_artifacts.arn, "${aws_s3_bucket.codepipeline_artifacts.arn}/*"]
+  }
+  # trigger CodeBuild
+  statement {
+    actions   = ["codebuild:StartBuild","codebuild:BatchGetBuilds"]
+    resources = ["*"]
+  }
+  # GitHub source via CodeStar Connections
+  statement {
+    actions   = ["codestar-connections:UseConnection"]
+    resources = [aws_codestarconnections_connection.github.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "codepipeline_frontend_inline" {
+  role   = aws_iam_role.codepipeline_frontend.name
+  policy = data.aws_iam_policy_document.codepipeline_frontend_inline.json
+}
+
+resource "aws_codebuild_project" "frontend" {
+  name         = "${var.project}-frontend-build"
+  service_role = aws_iam_role.codebuild_frontend.arn
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type    = "BUILD_GENERAL1_SMALL"
+    image           = "aws/codebuild/standard:7.0"
+    type            = "LINUX_CONTAINER"
+    privileged_mode = false
+
+    environment_variable {
+      name  = "AWS_REGION"
+      value = var.region
+    }
+    environment_variable {
+      name  = "BUCKET"
+      value = aws_s3_bucket.frontend.id
+    }
+    environment_variable {
+      name  = "DISTRIBUTION_ID"
+      value = aws_cloudfront_distribution.frontend.id
+    }
+  }
+
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = <<-YAML
+      version: 0.2
+      phases:
+        install:
+          commands:
+            - node --version || true
+            - npm --version || true
+        build:
+          commands:
+            - cd frontend
+            - npm ci
+            - npm run build
+        post_build:
+          commands:
+            - echo "Uploading to S3 bucket $BUCKET"
+            - aws s3 sync dist s3://$BUCKET --delete
+            - echo "Invalidating CloudFront"
+            - aws cloudfront create-invalidation --distribution-id $DISTRIBUTION_ID --paths '/*'
+      artifacts:
+        files:
+          - '**/*'
+    YAML
+  }
+
+  logs_config {
+    cloudwatch_logs {
+      group_name = aws_cloudwatch_log_group.ecs.name
+    }
+  }
+}
+
+
+resource "aws_codepipeline" "frontend" {
+  name     = "${var.project}-frontend-pipeline"
+  role_arn = aws_iam_role.codepipeline_frontend.arn
+
+  artifact_store {
+    location = aws_s3_bucket.codepipeline_artifacts.bucket
+    type     = "S3"
+  }
+
+  stage {
+    name = "Source"
+    action {
+      name             = "Source"
+      category         = "Source"
+      owner            = "AWS"
+      provider         = "CodeStarSourceConnection"
+      version          = "1"
+      output_artifacts = ["source_output"]
+      configuration = {
+        ConnectionArn    = aws_codestarconnections_connection.github.arn
+        FullRepositoryId = "${var.github_owner}/${var.github_repo}"
+        BranchName       = var.github_branch
+      }
+    }
+  }
+
+  stage {
+    name = "Build"
+    action {
+      name            = "BuildAndDeployFrontend"
+      category        = "Build"
+      owner           = "AWS"
+      provider        = "CodeBuild"
+      version         = "1"
+      input_artifacts = ["source_output"]
+      configuration = {
+        ProjectName = aws_codebuild_project.frontend.name
+      }
+    }
+  }
+
+  tags = { Project = var.project, Environment = "dev" }
 }
 
 
