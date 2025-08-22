@@ -52,3 +52,24 @@ infra/terraform/*_override.tf.json
 infra/terraform/override.tf
 infra/terraform/override.tf.json
 infra/terraform/terraform.tfplan
+# ---- Terraform (ignore anywhere in repo) ----
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.tfplan
+*.tfplan
+.terraformrc
+terraform.rc
+# keep the lockfile(s) under version control
+!.terraform.lock.hcl
+

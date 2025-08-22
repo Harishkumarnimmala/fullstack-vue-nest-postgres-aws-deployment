@@ -1,0 +1,11 @@
+variable "project"           { type = string }
+variable "environment"       { type = string }
+variable "region"            { type = string }
+variable "vpc_id"            { type = string }
+variable "public_subnet_ids" { type = list(string) }
+variable "container_port"    { type = number }
+variable "image_url"         { type = string }
+variable "desired_count"     { type = number }
+variable "env_vars"          { type = map(string) }
+variable "healthcheck_path"  { type = string }
+variable "tags"              { type = map(string) }
