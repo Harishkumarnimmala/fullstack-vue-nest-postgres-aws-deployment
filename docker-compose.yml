@@ -18,7 +18,7 @@ services:
     depends_on:
       - backend
     ports:
-      - '5173:80'   # Frontend runs at http://localhost:5173
+      - '5173:80'                      # Frontend runs at http://localhost:5173
     restart: unless-stopped
 
 
