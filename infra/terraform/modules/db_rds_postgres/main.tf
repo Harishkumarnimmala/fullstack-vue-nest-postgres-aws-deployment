@@ -32,22 +32,33 @@ resource "aws_db_subnet_group" "pg" {
 }
 
 resource "aws_db_instance" "pg" {
-  identifier             = "${var.project}-pg"
-  engine                 = "postgres"
-  engine_version         = "16"
-  instance_class         = "db.t4g.micro"
-  allocated_storage      = 20
+  identifier        = "${var.project}-pg"
+  engine            = "postgres"
+  engine_version    = "16"
+  instance_class    = "db.t4g.micro"
+  allocated_storage = 20
 
-  db_name                = var.db_name
-  username               = var.db_user
-  password               = var.db_password
+  # Auto-grow storage up to a ceiling
+  max_allocated_storage = var.max_allocated_storage
+
+  db_name  = var.db_name
+  username = var.db_user
+  password = var.db_password
 
   db_subnet_group_name   = aws_db_subnet_group.pg.name
   vpc_security_group_ids = [aws_security_group.db.id]
 
-  publicly_accessible    = false
-  multi_az               = false
-  skip_final_snapshot    = true
+  publicly_accessible = false
+  multi_az            = false
+  skip_final_snapshot = true
+
+  # Helpful dev defaults
+  backup_retention_period      = var.backup_retention_days
+  auto_minor_version_upgrade   = true
+  performance_insights_enabled = var.performance_insights
+
+  # Apply small changes immediately in dev (won’t restart for everything)
+  apply_immediately = true
 
   tags = merge(var.tags, { Name = "${var.project}-pg" })
 }
