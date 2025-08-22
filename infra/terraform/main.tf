@@ -273,7 +273,8 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "DB_PORT", value = "5432" },
         { name = "DB_NAME", value = "appdb" },
         { name = "DB_USER", value = var.db_user },
-        { name = "DB_PASSWORD", value = var.db_password }
+        { name = "DB_PASSWORD", value = var.db_password },
+        { name = "DB_SSL", value = "true" }
       ],
       logConfiguration = {
         logDriver = "awslogs",
