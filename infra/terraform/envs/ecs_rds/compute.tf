@@ -9,7 +9,7 @@ module "compute" {
   # We'll push the real image later; point to ECR repo with a tag.
   # Keep desired_count = 0 for now so ECS doesn't try to run tasks yet.
   container_image = "${module.ecr_backend.repository_url}:latest"
-  desired_count   = 0
+  desired_count   = 1
 
   # Defaults: port 3000, cpu 256, memory 512, health /healthz, listener 80
   assign_public_ip = false

@@ -37,3 +37,17 @@ output "db_username" {
 output "ecr_backend_repo_url" {
   value = module.ecr_backend.repository_url
 }
+
+output "alb_dns_name" {
+  value = module.compute.alb_dns_name
+}
+
+output "frontend_bucket" {
+  value = module.cdn.bucket_name
+}
+
+output "cdn_domain" {
+  value = module.cdn.cloudfront_domain_name
+}
+
+

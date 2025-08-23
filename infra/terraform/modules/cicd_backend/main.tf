@@ -1,8 +1,8 @@
-data "aws_region" "current" {}
-data "aws_caller_identity" "current" {}
+# (no duplicate data sources here; they exist in iam.tf)
 
-###### CodeBuild project (build+push image, ECS deploy)
-
+# ----------------------------
+# CodeBuild project (build+push image, force ECS deploy)
+# ----------------------------
 resource "aws_codebuild_project" "backend" {
   name         = "${var.project}-cb-backend"
   description  = "Builds Docker image for backend, pushes to ECR, forces ECS deploy"
@@ -18,9 +18,15 @@ resource "aws_codebuild_project" "backend" {
     type                        = "LINUX_CONTAINER"
     privileged_mode             = var.privileged_mode
     image_pull_credentials_type = "CODEBUILD"
+
+    # Pass values to the buildspec via env vars
     environment_variable {
       name  = "AWS_REGION"
       value = data.aws_region.current.name
+    }
+    environment_variable {
+      name  = "AWS_ACCOUNT_ID"
+      value = data.aws_caller_identity.current.account_id
     }
     environment_variable {
       name  = "ECR_REPO_URL"
@@ -45,18 +51,21 @@ resource "aws_codebuild_project" "backend" {
           commands:
             - echo Logging in to Amazon ECR...
             - aws --version
-            - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${var.ecr_repo_url}
+            - REGISTRY="$${AWS_ACCOUNT_ID}.dkr.ecr.$${AWS_REGION}.amazonaws.com"
+            - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REGISTRY
             - COMMIT_SHA=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
-            - IMAGE_TAG=${COMMIT_SHA:-latest}
+            - IMAGE_TAG=$${COMMIT_SHA:-latest}
             - echo "Using IMAGE_TAG=$IMAGE_TAG"
         build:
           commands:
             - echo Building the Docker image...
-            - docker build -t ${var.ecr_repo_url}:$IMAGE_TAG -f backend/Dockerfile backend
+            - docker build -t $ECR_REPO_URL:$IMAGE_TAG -f backend/Dockerfile backend
+            - docker tag $ECR_REPO_URL:$IMAGE_TAG $ECR_REPO_URL:latest
         post_build:
           commands:
             - echo Pushing the Docker image...
-            - docker push ${var.ecr_repo_url}:$IMAGE_TAG
+            - docker push $ECR_REPO_URL:$IMAGE_TAG
+            - docker push $ECR_REPO_URL:latest
             - echo Forcing new ECS deployment...
             - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment --region $AWS_REGION
       artifacts:
@@ -79,9 +88,9 @@ resource "aws_codebuild_project" "backend" {
   })
 }
 
-
-####### CodePipeline (Source -> Build)
-
+# ----------------------------
+# CodePipeline (Source -> Build)
+# ----------------------------
 resource "aws_codepipeline" "backend" {
   name     = "${var.project}-cp-backend"
   role_arn = aws_iam_role.codepipeline.arn
