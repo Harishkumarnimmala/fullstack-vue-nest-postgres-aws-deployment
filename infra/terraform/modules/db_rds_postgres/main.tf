@@ -31,6 +31,7 @@ resource "aws_security_group" "db" {
   })
 }
 
+
 # Strong random password for the DB master user
 resource "random_password" "db" {
   length           = 24
@@ -46,6 +47,7 @@ resource "aws_db_instance" "this" {
   instance_class             = var.instance_class
   allocated_storage          = var.allocated_storage
   storage_type               = "gp3"
+  max_allocated_storage = var.max_allocated_storage
 
   db_name                    = var.db_name
   username                   = var.db_username
@@ -60,6 +62,9 @@ resource "aws_db_instance" "this" {
   deletion_protection        = false
   skip_final_snapshot        = true
   apply_immediately          = true
+
+  performance_insights_enabled = true
+  performance_insights_retention_period = 7
 
   tags = merge(var.tags, {
     Name    = "${var.project}-postgres"

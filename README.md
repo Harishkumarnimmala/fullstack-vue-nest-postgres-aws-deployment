@@ -219,3 +219,7 @@ export AWS_DEFAULT_REGION=eu-central-1
 # Verify account 
 aws sts get-caller-identity
 
+# Verify the backend api with curl via load balancer and cloudfront 
+
+curl -s https://d2bsfkopojhscg.cloudfront.net/api/greeting
+curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting

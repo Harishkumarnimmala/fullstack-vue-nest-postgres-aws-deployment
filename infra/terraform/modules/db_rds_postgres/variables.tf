@@ -45,3 +45,11 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+# Allow RDS to auto-grow storage up to this GiB
+variable "max_allocated_storage" {
+  type        = number
+  description = "Upper limit for RDS storage auto-scaling (GiB)"
+  default     = 100
+}
+

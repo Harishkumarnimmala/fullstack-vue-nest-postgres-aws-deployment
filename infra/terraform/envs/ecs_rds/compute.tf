@@ -6,6 +6,8 @@ module "compute" {
   public_subnet_ids  = module.network.public_subnet_ids
   private_subnet_ids = module.network.private_subnet_ids
   health_check_path = "/healthz"
+  asg_memory_target = 70
+
 
 
   # We'll push the real image later; point to ECR repo with a tag.

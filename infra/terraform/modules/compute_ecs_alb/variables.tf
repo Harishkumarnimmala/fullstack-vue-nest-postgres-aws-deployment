@@ -82,3 +82,42 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+# --- ECS Service Auto Scaling (DesiredCount) ---
+variable "enable_autoscaling" {
+  description = "Enable Application Auto Scaling for the ECS service"
+  type        = bool
+  default     = true
+}
+
+variable "asg_min_capacity" {
+  description = "Minimum number of tasks"
+  type        = number
+  default     = 1
+}
+
+variable "asg_max_capacity" {
+  description = "Maximum number of tasks"
+  type        = number
+  default     = 3
+}
+
+variable "asg_cpu_target" {
+  description = "Target CPU utilization percentage for target-tracking"
+  type        = number
+  default     = 50
+}
+
+variable "asg_memory_target" {
+  description = "Optional: target Memory utilization percentage (set null to disable)"
+  type        = number
+  default     = null
+}
+
+# Scale when each task sees ~this many requests/sec via ALB
+variable "asg_requests_per_target" {
+  description = "Target ALB requests per target (requests/second)"
+  type        = number
+  default     = 50
+}
+

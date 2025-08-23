@@ -49,7 +49,7 @@ resource "aws_ecs_task_definition" "backend" {
 
       environment = [
         { name = "NODE_ENV", value = "production" },
-        { name = "DB_SSL",   value = "false" } # your service reads this flag
+        { name = "DB_SSL",   value = "true" } # our service reads this flag
       ]
 
       # Map individual keys from the Secrets Manager JSON to env vars
@@ -85,6 +85,11 @@ resource "aws_ecs_service" "backend" {
   }
 
   depends_on = [aws_lb_listener.http]
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+
 
   tags = merge(var.tags, {
     Project   = var.project
