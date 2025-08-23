@@ -11,7 +11,7 @@ export class AppController {
     return this.appService.greeting();
   }
 
-  // NEW: API-prefixed alias so CloudFront route /api/* works
+  // NEW: API-prefixed aliases for CloudFront route /api/*
   @Get('/api/greeting')
   getGreetingApi() {
     return this.appService.greeting();
@@ -22,7 +22,7 @@ export class AppController {
     return { ok: true };
   }
 
-  // NEW: API-prefixed health alias (optional)
+  // NEW: optional API-prefixed health
   @Get('/api/healthz')
   healthApi() {
     return { ok: true };
