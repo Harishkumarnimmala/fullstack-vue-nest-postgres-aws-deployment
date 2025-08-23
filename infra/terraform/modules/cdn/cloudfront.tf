@@ -56,6 +56,27 @@ resource "aws_cloudfront_distribution" "this" {
     max_ttl     = 86400
   }
 
+  # Route /healthz to ALB (uncached), so health works via CDN too
+  ordered_cache_behavior {
+    path_pattern           = "/healthz"
+    target_origin_id       = "alb-backend"
+    viewer_protocol_policy = "redirect-to-https"
+
+    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    cached_methods   = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = false
+      cookies { forward = "none" }
+      headers = ["*"]
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 0
+  }
+
+
   # Route API calls to ALB, effectively un-cached
   ordered_cache_behavior {
     path_pattern           = var.api_path_pattern # e.g., /api/*
