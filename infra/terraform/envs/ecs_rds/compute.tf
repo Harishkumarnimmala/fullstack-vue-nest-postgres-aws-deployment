@@ -5,7 +5,7 @@ module "compute" {
   vpc_id             = module.network.vpc_id
   public_subnet_ids  = module.network.public_subnet_ids
   private_subnet_ids = module.network.private_subnet_ids
-  health_check_path = "/api/healthz"
+  health_check_path = "/healthz"
 
 
   # We'll push the real image later; point to ECR repo with a tag.
