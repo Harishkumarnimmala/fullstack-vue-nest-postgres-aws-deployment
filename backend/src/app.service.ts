@@ -2,7 +2,6 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { Pool, PoolClient } from 'pg';
 
 const useSsl = (process.env.DB_SSL || 'false').toLowerCase() === 'true';
-
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
   port: Number(process.env.DB_PORT || 5432),
@@ -17,16 +16,6 @@ export class AppService {
   async greeting() {
     let client: PoolClient | null = null;
     try {
-      // tiny debug: print non-sensitive DB envs once per request
-      // (no passwords logged)
-      console.log('[greeting] DB env', {
-        host: process.env.DB_HOST,
-        port: process.env.DB_PORT,
-        name: process.env.DB_NAME,
-        user: process.env.DB_USER,
-        ssl: process.env.DB_SSL,
-      });
-
       client = await pool.connect();
       await this.ensureSchemaAndSeed(client);
 
@@ -34,7 +23,7 @@ export class AppService {
         `SELECT name, street, zip, city, country
          FROM addresses
          ORDER BY random()
-         LIMIT 1;`,
+         LIMIT 1;`
       );
 
       if (!rows.length) {
@@ -44,9 +33,8 @@ export class AppService {
       const r = rows[0];
       const address = `${r.street}, ${r.zip} ${r.city}, ${r.country}`;
       return { name: r.name, date: this.today(), address };
-    } catch (err: any) {
-      console.error('[greeting] DB error:', err?.message || err);
-      throw new InternalServerErrorException('DB operation failed');
+    } catch (err) {
+      throw new InternalServerErrorException('Internal server error');
     } finally {
       if (client) client.release();
     }
