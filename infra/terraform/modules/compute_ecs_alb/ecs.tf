@@ -48,15 +48,17 @@ resource "aws_ecs_task_definition" "backend" {
       }
 
       environment = [
-        { name = "NODE_ENV", value = "production" }
+        { name = "NODE_ENV", value = "production" },
+        { name = "DB_SSL",   value = "false" } # your service reads this flag
       ]
 
-      # Inject the entire DB secret JSON; app will parse it.
+      # Map individual keys from the Secrets Manager JSON to env vars
       secrets = [
-        {
-          name      = "DB_SECRET_JSON"
-          valueFrom = var.db_secret_arn
-        }
+        { name = "DB_HOST",     valueFrom = "${var.db_secret_arn}:host::" },
+        { name = "DB_PORT",     valueFrom = "${var.db_secret_arn}:port::" },
+        { name = "DB_NAME",     valueFrom = "${var.db_secret_arn}:dbname::" },
+        { name = "DB_USER",     valueFrom = "${var.db_secret_arn}:username::" },
+        { name = "DB_PASSWORD", valueFrom = "${var.db_secret_arn}:password::" }
       ]
     }
   ])
