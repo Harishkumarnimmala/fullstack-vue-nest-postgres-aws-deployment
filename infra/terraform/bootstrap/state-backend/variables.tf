@@ -1,3 +1,9 @@
-variable "project"    { type = string }
-variable "region"     { type = string }
-variable "account_id" { type = string }
+variable "aws_region" {
+  type    = string
+  default = "eu-central-1"
+}
+
+variable "project" {
+  type    = string
+  default = "fullstack"
+}

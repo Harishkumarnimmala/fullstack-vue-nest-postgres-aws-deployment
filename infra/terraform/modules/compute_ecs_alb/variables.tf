@@ -1,13 +1,6 @@
 variable "project" {
-  type = string
-}
-
-variable "environment" {
-  type = string
-}
-
-variable "region" {
-  type = string
+  type    = string
+  default = "fullstack"
 }
 
 variable "vpc_id" {
@@ -18,65 +11,74 @@ variable "public_subnet_ids" {
   type = list(string)
 }
 
-variable "container_port" {
-  type = number
+variable "private_subnet_ids" {
+  type = list(string)
 }
 
-variable "image_url" {
-  type = string
+# Container/task settings
+variable "container_image" {
+  description = "ECR image URI for the NestJS backend"
+  type        = string
+}
+
+variable "container_port" {
+  type    = number
+  default = 3000
 }
 
 variable "desired_count" {
-  type = number
-}
-
-# plain env vars (non-secret)
-variable "env_vars" {
-  type = map(string)
-}
-
-# NAME -> Secret ARN (for ECS "secrets")
-variable "secret_env_vars" {
-  type    = map(string)
-  default = {}
-}
-
-# allow the task exec role to read these ARNs
-variable "secrets_manager_arns" {
-  type    = list(string)
-  default = []
-}
-
-variable "healthcheck_path" {
-  type = string
-}
-
-variable "tags" {
-  type = map(string)
-}
-
-# --- autoscaling ---
-variable "enable_autoscaling" {
-  type    = bool
-  default = true
-}
-
-variable "autoscaling_min_capacity" {
   type    = number
   default = 1
 }
 
-variable "autoscaling_max_capacity" {
-  type    = number
-  default = 3
+variable "cpu" {
+  description = "Fargate task CPU (e.g., 256, 512, 1024)"
+  type        = number
+  default     = 256
 }
 
-variable "autoscaling_cpu_target" {
-  type    = number
-  default = 50
+variable "memory" {
+  description = "Fargate task memory in MiB (e.g., 512, 1024, 2048)"
+  type        = number
+  default     = 512
 }
 
-variable "autoscaling_memory_target" {
+# ALB + health check
+variable "health_check_path" {
+  type    = string
+  default = "/healthz"
+}
+
+variable "listener_port" {
   type    = number
-  default = 70
+  default = 80
+}
+
+# Networking
+variable "assign_public_ip" {
+  description = "Whether tasks get public IPs (keep false for private subnets)"
+  type        = bool
+  default     = false
+}
+
+# Security + Secrets
+variable "db_security_group_id" {
+  description = "Security Group ID of the RDS instance to allow ingress from ECS"
+  type        = string
+}
+
+variable "db_secret_arn" {
+  description = "Secrets Manager ARN for the DB credentials JSON"
+  type        = string
+}
+
+# Logging
+variable "log_retention_days" {
+  type    = number
+  default = 7
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
 }

@@ -1,8 +1,10 @@
-resource "aws_codestarconnections_connection" "github" {
-  name          = "${var.project}-${var.environment}-github"
-  provider_type = "GitHub"
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-  }
+resource "aws_codestarconnections_connection" "this" {
+  name          = var.connection_name
+  provider_type = var.provider_type
+
+  tags = merge(var.tags, {
+    Project   = var.project
+    Stack     = "cicd"
+    Component = "codestar"
+  })
 }

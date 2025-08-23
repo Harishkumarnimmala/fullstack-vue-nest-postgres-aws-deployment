@@ -1,5 +1,15 @@
-variable "project"     { type = string }
-variable "environment" { type = string }
-variable "account_id"  { type = string }
-variable "region"      { type = string }
-variable "tags"        { type = map(string) }
+variable "project" {
+  type    = string
+  default = "fullstack"
+}
+
+variable "force_destroy" {
+  description = "Allow terraform to delete the bucket even if it has objects"
+  type        = bool
+  default     = false
+}
+
+variable "tags" {
+  type    = map(string)
+  default = {}
+}

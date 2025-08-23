@@ -1,99 +1,40 @@
-# CodeBuild role
-resource "aws_iam_role" "codebuild" {
-  name = "${var.project}-cb-backend-role-${var.environment}"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{ Effect="Allow", Principal={ Service="codebuild.amazonaws.com" }, Action="sts:AssumeRole" }]
-  })
-}
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
 
-data "aws_iam_policy_document" "cb_inline" {
-  statement {
-    actions   = ["logs:CreateLogGroup","logs:CreateLogStream","logs:PutLogEvents"]
-    resources = ["*"]
-  }
-  statement {
-    actions   = ["s3:GetObject","s3:PutObject","s3:GetObjectVersion","s3:GetBucketAcl","s3:ListBucket"]
-    resources = ["arn:aws:s3:::${var.artifacts_bucket}", "arn:aws:s3:::${var.artifacts_bucket}/*"]
-  }
-  statement {
-    actions   = ["ecr:GetAuthorizationToken","ecr:BatchCheckLayerAvailability","ecr:CompleteLayerUpload","ecr:GetDownloadUrlForLayer","ecr:InitiateLayerUpload","ecr:PutImage","ecr:UploadLayerPart","ecr:BatchGetImage"]
-    resources = ["*"]
-  }
-  statement {
-    actions   = ["ecs:UpdateService","ecs:DescribeServices","ecs:DescribeTaskDefinition"]
-    resources = ["*"]
-  }
-}
-
-resource "aws_iam_role_policy" "cb_inline" {
-  role   = aws_iam_role.codebuild.name
-  policy = data.aws_iam_policy_document.cb_inline.json
-}
-
-# CodePipeline role
-resource "aws_iam_role" "codepipeline" {
-  name = "${var.project}-cp-backend-role-${var.environment}"
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{ Effect="Allow", Principal={ Service="codepipeline.amazonaws.com" }, Action="sts:AssumeRole" }]
-  })
-}
-
-data "aws_iam_policy_document" "cp_inline" {
-  statement {
-    actions   = ["s3:GetObject","s3:PutObject","s3:GetBucketVersioning","s3:GetObjectVersion","s3:ListBucket"]
-    resources = ["arn:aws:s3:::${var.artifacts_bucket}", "arn:aws:s3:::${var.artifacts_bucket}/*"]
-  }
-  statement {
-    actions   = ["codebuild:StartBuild","codebuild:BatchGetBuilds"]
-    resources = ["*"]
-  }
-  statement {
-    actions   = ["codestar-connections:UseConnection"]
-    resources = [var.connection_arn]
-  }
-}
-
-resource "aws_iam_role_policy" "cp_inline" {
-  role   = aws_iam_role.codepipeline.name
-  policy = data.aws_iam_policy_document.cp_inline.json
-}
+###### CodeBuild project (build+push image, ECS deploy)
 
 resource "aws_codebuild_project" "backend" {
-  name         = "${var.project}-${var.environment}-backend-build"
+  name         = "${var.project}-cb-backend"
+  description  = "Builds Docker image for backend, pushes to ECR, forces ECS deploy"
   service_role = aws_iam_role.codebuild.arn
 
-  artifacts { type = "CODEPIPELINE" }
+  artifacts {
+    type = "CODEPIPELINE"
+  }
 
   environment {
-  compute_type    = "BUILD_GENERAL1_SMALL"
-  image           = "aws/codebuild/standard:7.0"
-  type            = "LINUX_CONTAINER"
-  privileged_mode = true
-
-  environment_variable {
-    name  = "AWS_REGION"
-    value = var.region
+    compute_type                = var.compute_type
+    image                       = var.build_image
+    type                        = "LINUX_CONTAINER"
+    privileged_mode             = var.privileged_mode
+    image_pull_credentials_type = "CODEBUILD"
+    environment_variable {
+      name  = "AWS_REGION"
+      value = data.aws_region.current.name
+    }
+    environment_variable {
+      name  = "ECR_REPO_URL"
+      value = var.ecr_repo_url
+    }
+    environment_variable {
+      name  = "ECS_CLUSTER"
+      value = var.ecs_cluster_name
+    }
+    environment_variable {
+      name  = "ECS_SERVICE"
+      value = var.ecs_service_name
+    }
   }
-  environment_variable {
-    name  = "ACCOUNT_ID"
-    value = var.account_id
-  }
-  environment_variable {
-    name  = "ECR_REPO"
-    value = var.ecr_repo_url
-  }
-  environment_variable {
-    name  = "ECS_CLUSTER"
-    value = var.ecs_cluster_name
-  }
-  environment_variable {
-    name  = "ECS_SERVICE"
-    value = var.ecs_service_name
-  }
-  }
-
 
   source {
     type      = "CODEPIPELINE"
@@ -104,56 +45,67 @@ resource "aws_codebuild_project" "backend" {
           commands:
             - echo Logging in to Amazon ECR...
             - aws --version
-            - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${var.ecr_repo_url}
             - COMMIT_SHA=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c1-7)
-            - IMAGE_TAG=$${COMMIT_SHA:-latest}
+            - IMAGE_TAG=${COMMIT_SHA:-latest}
+            - echo "Using IMAGE_TAG=$IMAGE_TAG"
         build:
           commands:
-            - echo Building Docker image...
-            - cd backend
-            - docker build -t $ECR_REPO:$IMAGE_TAG -t $ECR_REPO:latest .
+            - echo Building the Docker image...
+            - docker build -t ${var.ecr_repo_url}:$IMAGE_TAG -f backend/Dockerfile backend
         post_build:
           commands:
-            - echo Pushing images to ECR...
-            - docker push $ECR_REPO:$IMAGE_TAG
-            - docker push $ECR_REPO:latest
-            - echo Forcing ECS deployment...
-            - aws ecs update-service --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" --force-new-deployment --region $AWS_REGION
+            - echo Pushing the Docker image...
+            - docker push ${var.ecr_repo_url}:$IMAGE_TAG
+            - echo Forcing new ECS deployment...
+            - aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_SERVICE --force-new-deployment --region $AWS_REGION
       artifacts:
         files:
           - '**/*'
+        discard-paths: yes
     YAML
   }
 
   logs_config {
     cloudwatch_logs {
-      group_name = var.log_group_name
+      group_name = "/codebuild/${var.project}-cb-backend"
     }
   }
+
+  tags = merge(var.tags, {
+    Project   = var.project
+    Stack     = "cicd"
+    Component = "codebuild-backend"
+  })
 }
 
+
+####### CodePipeline (Source -> Build)
+
 resource "aws_codepipeline" "backend" {
-  name     = "${var.project}-${var.environment}-backend-pipeline"
+  name     = "${var.project}-cp-backend"
   role_arn = aws_iam_role.codepipeline.arn
 
   artifact_store {
-    location = var.artifacts_bucket
     type     = "S3"
+    location = var.artifacts_bucket
   }
 
   stage {
     name = "Source"
     action {
-      name             = "Source"
+      name             = "GitHub_Source"
       category         = "Source"
       owner            = "AWS"
       provider         = "CodeStarSourceConnection"
       version          = "1"
       output_artifacts = ["source_output"]
+
       configuration = {
-        ConnectionArn    = var.connection_arn
+        ConnectionArn    = var.github_connection_arn
         FullRepositoryId = "${var.github_owner}/${var.github_repo}"
         BranchName       = var.github_branch
+        DetectChanges    = "true"
       }
     }
   }
@@ -161,20 +113,22 @@ resource "aws_codepipeline" "backend" {
   stage {
     name = "Build"
     action {
-      name            = "BuildAndDeploy"
+      name            = "Build_Backend"
       category        = "Build"
       owner           = "AWS"
       provider        = "CodeBuild"
       version         = "1"
       input_artifacts = ["source_output"]
+
       configuration = {
         ProjectName = aws_codebuild_project.backend.name
       }
     }
   }
 
-  tags = {
-    Project     = var.project
-    Environment = var.environment
-  }
+  tags = merge(var.tags, {
+    Project   = var.project
+    Stack     = "cicd"
+    Component = "codepipeline-backend"
+  })
 }
