@@ -32,6 +32,7 @@ resource "aws_codebuild_project" "frontend" {
       phases:
         install:
           commands:
+            - cp frontend/.env.production.serverless frontend/.env.production || true
             - cd frontend
             - node -v
             - npm ci

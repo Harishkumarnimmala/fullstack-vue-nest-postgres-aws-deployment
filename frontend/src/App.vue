@@ -7,7 +7,8 @@ const data = ref({ name: '', date: '', address: '' })
 
 onMounted(async () => {
   try {
-    const res = await fetch('/api/greeting', { headers: { 'Accept': 'application/json' } })
+    const base = import.meta.env.VITE_API_BASE || '';
+    const res  = await fetch(`${base}/api/greeting`, { credentials: 'omit' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     data.value = await res.json()
   } catch (e) {

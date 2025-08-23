@@ -62,7 +62,8 @@ resource "aws_appautoscaling_policy" "req_target" {
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
       # Format: app/<lb-name>/<lb-id>/targetgroup/<tg-name>/<tg-id>
-      resource_label = "${aws_lb.alb.arn_suffix}/${aws_lb_target_group.backend.arn_suffix}"
+      resource_label = "${aws_lb.this.arn_suffix}/${aws_lb_target_group.backend.arn_suffix}"
+
     }
     target_value       = var.asg_requests_per_target
     scale_in_cooldown  = 60
