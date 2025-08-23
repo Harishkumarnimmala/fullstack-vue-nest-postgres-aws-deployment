@@ -5,6 +5,8 @@ module "compute" {
   vpc_id             = module.network.vpc_id
   public_subnet_ids  = module.network.public_subnet_ids
   private_subnet_ids = module.network.private_subnet_ids
+  health_check_path = "/api/healthz"
+
 
   # We'll push the real image later; point to ECR repo with a tag.
   # Keep desired_count = 0 for now so ECS doesn't try to run tasks yet.

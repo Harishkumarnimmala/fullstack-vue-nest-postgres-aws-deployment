@@ -50,4 +50,17 @@ output "cdn_domain" {
   value = module.cdn.cloudfront_domain_name
 }
 
+output "ecs_cluster_name" {
+  value = module.compute.ecs_cluster_name
+}
+
+output "ecs_service_name" {
+  value = module.compute.ecs_service_name
+}
+
+output "target_group_arn" {
+  value = module.compute.target_group_arn
+}
+
+
 
