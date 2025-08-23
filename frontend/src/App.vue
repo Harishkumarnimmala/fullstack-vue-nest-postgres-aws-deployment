@@ -1,32 +1,33 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 
-const data = ref(null)
-const error = ref(null)
+const loading = ref(true)
+const error = ref('')
+const data = ref({ name: '', date: '', address: '' })
 
 onMounted(async () => {
   try {
-    // Backend base URL: use env var if provided, else localhost for dev
-    const base = import.meta.env.VITE_API_URL || 'http://localhost:3000'
-    const res = await fetch(`${base}/greeting`)
-    if (!res.ok) throw new Error(await res.text())
+    const res = await fetch('/api/greeting', { headers: { 'Accept': 'application/json' } })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
     data.value = await res.json()
   } catch (e) {
-    error.value = e.message || 'Request failed'
+    error.value = 'Could not load greeting.'
+    console.error(e)
+  } finally {
+    loading.value = false
   }
 })
 </script>
 
 <template>
-  <main style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; padding: 2rem; line-height: 1.5;">
+  <main style="font-family: ui-sans-serif, system-ui; padding: 2rem; max-width: 720px;">
     <h1 style="margin: 0 0 1rem;">Interview Demo</h1>
 
-    <p v-if="!data && !error">Loading…</p>
-    <p v-if="error" style="color:crimson">{{ error }}</p>
-
-    <h2 v-if="data" style="font-weight:600;">
-      Hello {{ data.name }}, today is {{ data.date }}.<br />
+    <p v-if="loading">Loading…</p>
+    <p v-else-if="error">{{ error }}</p>
+    <p v-else>
+      Hello {{ data.name }}, today is {{ data.date }}.
       Your registered address is: {{ data.address }}
-    </h2>
+    </p>
   </main>
 </template>
