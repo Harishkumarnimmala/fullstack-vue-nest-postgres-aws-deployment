@@ -68,3 +68,10 @@ variable "aurora_cluster_id" {
   type        = string
 }
 
+variable "alarm_topic_arn" {
+  description = "SNS topic ARN for alarm notifications "
+  type        = string
+  default     = null
+}
+
+
