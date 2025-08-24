@@ -31,30 +31,25 @@ resource "aws_codebuild_project" "serverless" {
     type      = "CODEPIPELINE"
     buildspec = <<-YAML
       version: 0.2
-
       phases:
         pre_build:
           commands:
-            - echo "Using Node & NPM versions"
-            - node -v || true
-            - npm -v || true
-            - echo "Installing deps in serverless/"
-            - cd serverless
-            - npm ci || npm install
+            - 'echo "entering serverless/"'
+            - 'cd serverless'
+            - 'echo "installing deps"'
+            - 'npm ci || npm install'
         build:
           commands:
-            - echo "Zipping lambda code"
-            - zip -qr ../lambda.zip .
-            - echo "Updating Lambda function code: $LAMBDA_FUNCTION_NAME"
-            - aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_NAME" --zip-file fileb://../lambda.zip
+            - 'echo "zipping lambda code"'
+            - 'zip -qr ../lambda.zip .'
+            - 'echo "updating function: $LAMBDA_FUNCTION_NAME"'
+            - 'aws lambda update-function-code --function-name "$LAMBDA_FUNCTION_NAME" --zip-file fileb://../lambda.zip'
         post_build:
           commands:
-            - echo "Build completed at `date -u +%FT%TZ`"
-      artifacts:
-        files:
-          - "**/*"
+            - 'echo "done"'
     YAML
   }
+
 
   logs_config {
     cloudwatch_logs {
