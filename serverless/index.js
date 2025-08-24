@@ -82,7 +82,8 @@ async function handleGreeting() {
     const r = rows[0] || { name: 'Guest', street: '', zip: '', city: '', country: '' };
     const address = `${r.street}, ${r.zip} ${r.city}, ${r.country}`;
     const today = new Date().toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
-    return { name: r.name, date: today, address };
+    return { name: r.name, date: today, address, deployedBy: "codepipeline" };
+
   } finally {
     client.release();
   }
