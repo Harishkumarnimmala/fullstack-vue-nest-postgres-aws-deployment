@@ -223,3 +223,10 @@ aws sts get-caller-identity
 
 curl -s https://d2bsfkopojhscg.cloudfront.net/api/greeting
 curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting
+
+# Task1 
+curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting | jq
+
+# Task4
+API="https://w14uyuaf9f.execute-api.eu-central-1.amazonaws.com"
+curl -s "$API/api/greeting" | jq

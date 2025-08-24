@@ -14,7 +14,7 @@ async function getPool() {
   const s = JSON.parse(res.SecretString || '{}');
 
   const pool = new Pool({
-    host: s.host,
+    host: process.env.PROXY_HOST || s.host,
     port: Number(s.port || 5432),
     database: s.dbname || 'appdb',
     user: s.username,

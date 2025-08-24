@@ -17,3 +17,8 @@ output "secret_arn" {
   description = "ARN of the Secrets Manager JSON with {host,port,dbname,username,password}"
   value       = aws_secretsmanager_secret.db.arn
 }
+
+output "cluster_id" {
+  value = aws_rds_cluster.this.id
+}
+

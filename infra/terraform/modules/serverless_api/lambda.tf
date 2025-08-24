@@ -10,7 +10,7 @@ locals {
 resource "null_resource" "build_lambda_zip" {
   triggers = {
     # bump to force rebuilds when code changes
-    code_version = "v1-greeting-db-008"
+    code_version = "v1-greeting-db-010"
   }
 
   provisioner "local-exec" {
@@ -42,7 +42,7 @@ async function getPool() {
   const s = JSON.parse(res.SecretString || '{}');
 
   const pool = new Pool({
-    host: s.host,
+    host: process.env.PROXY_HOST || s.host,
     port: Number(s.port || 5432),
     database: s.dbname || 'appdb',
     user: s.username,
@@ -165,7 +165,6 @@ resource "aws_lambda_function" "api" {
   memory_size   = var.lambda_memory_mb
   source_code_hash = filebase64sha256(local.build_zip)
 
-
   filename = local.build_zip
   # intentionally omit source_code_hash to avoid pre-check before build
 
@@ -179,6 +178,7 @@ resource "aws_lambda_function" "api" {
       SECRET_ARN   = var.aurora_secret_arn
       CODE_VERSION = null_resource.build_lambda_zip.triggers.code_version
       NODE_OPTIONS = "--enable-source-maps"
+      PROXY_HOST   = aws_db_proxy.this.endpoint
     }
   }
 

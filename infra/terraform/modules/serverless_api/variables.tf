@@ -56,3 +56,15 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "lambda_reserved_concurrency" {
+  description = "Hard cap for concurrent Lambda executions (protects DB)"
+  type        = number
+  default     = 10
+}
+
+variable "aurora_cluster_id" {
+  description = "Aurora cluster identifier used by RDS Proxy target"
+  type        = string
+}
+

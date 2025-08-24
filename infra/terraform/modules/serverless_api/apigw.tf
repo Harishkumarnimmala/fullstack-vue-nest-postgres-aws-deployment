@@ -38,6 +38,11 @@ resource "aws_apigatewayv2_stage" "default" {
   name        = "$default"
   auto_deploy = true
   tags        = local.common_tags
+
+  default_route_settings {
+    throttling_burst_limit = 50   # peak burst
+    throttling_rate_limit  = 25   # steady requests/sec
+  }
 }
 
 # Allow API Gateway to invoke the Lambda
