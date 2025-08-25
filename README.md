@@ -100,8 +100,8 @@ aws sts get-caller-identity
 
 # Verify the backend api with curl via load balancer and cloudfront 
 
-curl -s https://d2bsfkopojhscg.cloudfront.net/api/greeting
-curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting
+curl -s https://d2bsfkopojhscg.cloudfront.net/api/greeting        ## Via cloudfront
+curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting ## Via Loadbalancer
 
 # Task1 
 curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting | jq
