@@ -60,11 +60,12 @@ infra/ecs_rds
 infra/serverless
 
 ## Useful terraform commands during infra provisioning 
+```bash
 terraform init -reconfigure
 terraform plan -var-file=backend.tfvars
 terraform apply -var-file=backend.tfvars
 terraform destroy -var-file=backend.tfvars #Note : Once all deployments were deployed and tested please destroy 
-
+```
 ## I split Terraform into modules for:
 network, db, ecs_alb, cdn, cicd_backend, cicd_frontend, and serverless_api.
 
@@ -82,14 +83,15 @@ Aurora Serverless v2 scales database capacity automatically.
 Lambda scales per request (with RDS Proxy to manage DB connections).
 
 # Useful Commands to check the logs 
-
+```bash
 Check ECS logs:
 <aws logs tail /ecs/fullstack-backend --since 10m --follow>
 Check Lambda logs:
 <aws logs tail "/aws/lambda/fullstack-sls-api" --since 5m --follow>
+```
 
-
-# Below command helps to Configure our AWS Acoount  
+# Below command helps to Configure our AWS Acoount 
+```bash 
 aws configure --profile fullstack-<Add account id>
 
 export AWS_PROFILE=fullstack-<AccID here>
@@ -97,9 +99,10 @@ export AWS_DEFAULT_REGION=<Region here>
 
 # Verify account identity now
 aws sts get-caller-identity
+```
 
 # Verify the backend api with curl via load balancer and cloudfront 
-
+```bash
 curl -s https://d2bsfkopojhscg.cloudfront.net/api/greeting        ## Via cloudfront
 curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting ## Via Loadbalancer
 
@@ -110,4 +113,4 @@ curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting |
 API="https://w14uyuaf9f.execute-api.eu-central-1.amazonaws.com"
 curl -s "$API/api/greeting" | jq
 
-```bash
+```
