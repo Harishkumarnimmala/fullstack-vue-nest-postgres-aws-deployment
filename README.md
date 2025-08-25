@@ -16,7 +16,7 @@ The **name** and **address** come randomly from the database, while the **date**
 ---
 ## Two Deployment Approaches
 
-I implemented the same app in **two different ways on AWS**, both using Terraform for infrastructure:
+I deployed the same app in **two different ways on AWS**, both using Terraform for infrastructure:
 
 ### 1. ECS / ALB / RDS (Approach 1)
 - Frontend is built and stored in **S3**, delivered to the user via **CloudFront**
