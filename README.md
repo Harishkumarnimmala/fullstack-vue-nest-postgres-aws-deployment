@@ -45,7 +45,7 @@ Requirements:
 
 Run everything locally:
 
-```bash
+
 docker compose up -d
 
 ## We can test our local developments with this endpoints as below 
@@ -109,3 +109,5 @@ curl -s http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting |
 # Task4
 API="https://w14uyuaf9f.execute-api.eu-central-1.amazonaws.com"
 curl -s "$API/api/greeting" | jq
+
+```bash
