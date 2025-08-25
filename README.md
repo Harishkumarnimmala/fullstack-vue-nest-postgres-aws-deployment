@@ -1,222 +1,101 @@
-# fullstack-vue-nest-postgres-aws-deployment
+# Fullstack Vue + NestJS + PostgreSQL on AWS
 
-End-to-end fullstack demo with frontend (Vue), backend (NestJS), database (PostgreSQL), deployed on AWS with CI/CD pipeline
+This repository contains a fullstack application built with:
 
+- **Frontend**: Vue 3 (Vite)
+- **Backend**: NestJS
+- **Database**: PostgreSQL with sample address data
 
-# Clean terraform local files (important after destroy) 
-cd infra/terraform
+## Project Objective :
+The objective of this project is to design and deploy a cloud-native fullstack application on AWS using modern frameworks and services. The system demonstrates end-to-end integration of a Vue.js frontend, a NestJS backend, and a PostgreSQL database, following best practices for scalability, reliability, and CI/CD automation.
 
-# Dry-run — see what will be removed
-find . -type d -name '.terraform' -prune -print
-find . -type f \( -name 'terraform.tfstate' -o -name 'terraform.tfstate.backup' -o -name '.terraform.lock.hcl' \) -print
+# Project Goal :  
+When you open the frontend, it calls the backend API which responds with: Hello {Name}, today is {Date}. Your registered address is: {Address}
 
-# Remove local Terraform work dirs + state/lock files
-find . -type d -name '.terraform' -prune -exec rm -rf {} +
-find . -type f -name 'terraform.tfstate' -delete
-find . -type f -name 'terraform.tfstate.backup' -delete
-find . -type f -name '.terraform.lock.hcl' -delete
+The **name** and **address** come randomly from the database, while the **date** is generated dynamically.
+---
+## Two Deployment Approaches
 
-# Note : Please check the connection status from AWS codestar to our github
+I implemented the same app in **two different ways on AWS**, both using Terraform for infrastructure:
 
-🔹 Project Roadmap
-1. Application Structure
+### 1. ECS / ALB / RDS (Approach 1)
+- Frontend is built and stored in **S3**, delivered to the user via **CloudFront**
+- Backend runs as a container on **ECS Fargate** behind an **Application Load Balancer**
+- Database is an **RDS PostgreSQL instance** in private subnets
+- Everything is deployed into a custom **VPC** across 2 AZs
+- CI/CD is handled with **CodePipeline + CodeBuild**
+- ECS service has **autoscaling** enabled (CPU, memory, requests per target)
 
-Frontend (Vue 3, Vite)
+### 2. Serverless (Approach 2)
+- Frontend stays on **S3 + CloudFront**
+- Backend runs as an **AWS Lambda** function exposed through **API Gateway**
+- Database is **Aurora PostgreSQL Serverless v2** with **RDS Proxy** for connection pooling
+- Uses **Secrets Manager** to fetch DB credentials
+- CI/CD builds and deploys the Lambda code bundle automatically
+- Scales down to very low cost when idle
 
-Displays "Hello {Name}, today is {date}. Your registered address is: {Address}"
+---
 
-Fetches data from backend via AJAX /api/greeting
+## Local Development
 
-Backend (NestJS)
+Requirements:
+- Node.js 20+
+- Docker / Docker Compose
+- PostgreSQL client (`psql`)
 
-REST endpoint: /api/greeting → returns JSON
+Run everything locally:
 
-Generates current date, queries PostgreSQL for random record
+```bash
+docker compose up -d
 
-Random record = {name, street, zip, city, country}
+## We can test our local developments with this endpoints as below 
+Frontend → http://localhost:5173
+Backend → http://localhost:3000/greeting
 
-Database (PostgreSQL)
+## Terraform Deployment
 
-Table: addresses
+Each approach has its own Terraform folder:
 
-Fields: id, name, street, zip, city, country
+infra/ecs_rds
+infra/serverless
 
-Seeded with random but realistic data (AI-generated)
+## Useful terraform commands during infra provisioning 
+terraform init -reconfigure
+terraform plan -var-file=backend.tfvars
+terraform apply -var-file=backend.tfvars
+terraform destroy -var-file=backend.tfvars #Note : Once all deployments were deployed and tested please destroy 
 
-## Subtask 1: AWS Deployment Plan
+## I split Terraform into modules for:
+network, db, ecs_alb, cdn, cicd_backend, cicd_frontend, and serverless_api.
 
-Frontend (Vue)
+## CI/CD Pipelines
 
-Option A (simple, cost-effective):
+Frontend: GitHub → CodePipeline → CodeBuild → Build Vue → Upload to S3 → CloudFront invalidation
+Backend ECS: GitHub → CodePipeline → Build Docker image → Push to ECR → Update ECS service
+Backend Lambda: GitHub → CodePipeline → Bundle Lambda zip → Update Lambda function
+This allows frontend and backend to be updated independently.
 
-Build → store in S3 bucket (private)
+## Autoscaling
 
-Distribute via CloudFront (CDN, HTTPS, caching, global availability)
+ECS tasks scale automatically on CPU, memory, or request load.
+Aurora Serverless v2 scales database capacity automatically.
+Lambda scales per request (with RDS Proxy to manage DB connections).
 
-Backend (NestJS)
+# Useful Commands to check the logs 
 
-Option A (containerized, managed):
+Check ECS logs:
+<aws logs tail /ecs/fullstack-backend --since 10m --follow>
+Check Lambda logs:
+<aws logs tail "/aws/lambda/fullstack-sls-api" --since 5m --follow>
 
-Deploy with ECS Fargate behind Application Load Balancer (ALB)
 
-Pros: fully managed, auto-scaling, good for demo
+# Below command helps to Configure our AWS Acoount  
+aws configure --profile fullstack-<Add account id>
 
-Option B (serverless, cheaper):
+export AWS_PROFILE=fullstack-<AccID here>
+export AWS_DEFAULT_REGION=<Region here>
 
-Package backend as AWS Lambda (Node.js runtime)
-
-Expose via API Gateway
-
-Database (Postgres)
-
-Option A (managed, production-grade):
-
-Amazon RDS for PostgreSQL (multi-AZ optional, free tier eligible)
-
-Option B (lightweight, cheaper for demo):
-
-Aurora Serverless v2 (Postgres) – scales automatically, pay-per-use
-
-Infrastructure Management
-
-Use Terraform to provision:
-
-VPC (2 AZs, public + private subnets)
-
-S3 + CloudFront (frontend)
-
-ECS + ALB or Lambda + API Gateway (backend)
-
-RDS PostgreSQL (database)
-
-🔹 Subtask 2: CI/CD Pipelines
-
-Use AWS CodePipeline + CodeBuild (integrated with GitHub).
-
-Frontend Pipeline
-
-Trigger: push to main branch (frontend folder)
-
-Build: npm run build → upload to S3
-
-Post-build: CloudFront cache invalidation
-
-Backend Pipeline
-
-Trigger: push to main branch (backend folder)
-
-Build: Dockerize NestJS → push to ECR
-
-Deploy: Update ECS Fargate service (or redeploy Lambda)
-
-Database
-
-DB schema + seeding done via migrations (e.g., Prisma, TypeORM, or raw SQL migration scripts)
-
-Seed triggered automatically on first run
-
-🔹 Subtask 3: Scaling for High Traffic
-
-Frontend
-
-CloudFront automatically scales globally
-
-S3 scales automatically (no bottleneck)
-
-Backend
-
-ECS Fargate → auto scaling based on CPU/Memory/RequestCount
-
-ALB distributes traffic across containers
-
-Or with Lambda → auto-scales seamlessly per request
-
-Database
-
-RDS with read replicas for horizontal read scaling
-
-Aurora Serverless v2 for dynamic scaling (preferred for unpredictable workloads)
-
-Caching layer (optional): Amazon ElastiCache (Redis)
-
-## Subtask 4: Serverless Alternative
-
-Serverless Stack:
-
-Frontend: S3 + CloudFront (same)
-
-Backend: Lambda + API Gateway (instead of ECS)
-
-Database: Aurora Serverless v2 (instead of provisioned RDS)
-
-Advantages
-
-No servers to manage
-
-Scales automatically
-
-Lower idle cost (pay-per-use)
-
-Faster setup for demo
-
-Disadvantages
-
-Cold starts on Lambda (latency for first requests)
-
-Harder to run long-lived processes
-
-Aurora Serverless costs can spike under load (not predictable)
-
-Vendor lock-in
-
-## Cost Considerations (Free Tier Friendly)
-
-S3 + CloudFront → free/very cheap
-
-ECS Fargate → costs for vCPU/memory, but free tier covers some
-
-Lambda + API Gateway → cheaper for demo (100k+ requests free/month)
-
-RDS PostgreSQL (db.t3.micro) → free tier eligible for 750 hrs/month
-
-Aurora Serverless v2 → pay per ACU (scales better, but not always free)
-
-
-
-
-
-## Approach 1: ECS Fargate + RDS PostgreSQL
-
-Frontend: S3 + CloudFront
-
-Backend: ECS Fargate (Dockerized NestJS) + ALB
-
-Database: RDS PostgreSQL (multi-AZ optional)
-
-Secrets: DB creds in Secrets Manager → ECS task fetches via task role
-
-CI/CD: CodePipeline + CodeBuild (frontend + backend separately)
-
-## Approach 2: Serverless (Lambda + Aurora Serverless v2)
-
-Frontend: S3 + CloudFront (same)
-
-Backend: AWS Lambda (NestJS bundled) + API Gateway
-
-Database: Aurora Serverless v2 (Postgres)
-
-Secrets: DB creds in Secrets Manager → Lambda fetches via IAM role
-
-CI/CD: CodePipeline + CodeBuild (build → package → deploy Lambda)
-
-
-
-# Configuring your AWS Acoount 
-aws configure --profile fullstack-257394456514
-
-export AWS_PROFILE=fullstack-257394456514
-export AWS_DEFAULT_REGION=eu-central-1
-# Verify account 
+# Verify account identity now
 aws sts get-caller-identity
 
 # Verify the backend api with curl via load balancer and cloudfront 

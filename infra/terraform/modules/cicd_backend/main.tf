@@ -1,7 +1,7 @@
 # (no duplicate data sources here; they exist in iam.tf)
 
 # ----------------------------
-# CodeBuild project (build+push image, force ECS deploy)
+# CodeBuild project (build+push image, ECS deploy)
 # ----------------------------
 resource "aws_codebuild_project" "backend" {
   name         = "${var.project}-cb-backend"
