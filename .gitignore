@@ -61,7 +61,4 @@ terraform.tfplan
 .terraformrc
 terraform.rc
 !.terraform.lock.hcl
-# If you keep example vars in Git, un-comment the next line:
-# !*.tfvars.example
-
 *.zip

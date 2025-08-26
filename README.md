@@ -114,3 +114,10 @@ API="https://w14uyuaf9f.execute-api.eu-central-1.amazonaws.com"
 curl -s "$API/api/greeting" | jq
 
 ```
+
+# Test endpoints using hey 
+```bash
+hey -z 2m -c 50 \
+  -H "Cache-Control: no-cache" \
+  "http://fullstack-alb-518895826.eu-central-1.elb.amazonaws.com/greeting"
+```
