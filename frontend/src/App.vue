@@ -7,7 +7,6 @@ const data = ref({ name: '', date: '', address: '' })
 const showCard = ref(false)
 
 onMounted(async () => {
-  // trigger card fade-in after mount
   setTimeout(() => {
     showCard.value = true
   }, 100)
@@ -26,8 +25,23 @@ onMounted(async () => {
 })
 </script>
 
+<style>
+/* animated multicolor gradient */
+.bg-digital {
+  background: linear-gradient(270deg, #ff0080, #7928ca, #2afadf, #f6d365, #fda085);
+  background-size: 1000% 1000%;
+  animation: digitalFlow 20s ease infinite;
+}
+
+@keyframes digitalFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+</style>
+
 <template>
-  <main class="min-h-screen flex items-center justify-center bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 p-6">
+  <main class="min-h-screen flex items-center justify-center bg-digital p-6">
     <div
       class="bg-white/90 backdrop-blur-lg shadow-xl rounded-2xl p-8 max-w-lg w-full text-center transform transition-all duration-700 ease-out"
       :class="showCard ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
