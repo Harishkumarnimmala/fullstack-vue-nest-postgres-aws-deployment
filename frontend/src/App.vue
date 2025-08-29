@@ -63,7 +63,7 @@ onMounted(async () => {
       :class="showCard ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
     >
       <h1 class="text-3xl font-bold text-indigo-600 mb-6">
-        Avenit AG Interview Demo
+        Interview Demo
       </h1>
 
       <div v-if="loading" class="text-gray-600 animate-pulse">
