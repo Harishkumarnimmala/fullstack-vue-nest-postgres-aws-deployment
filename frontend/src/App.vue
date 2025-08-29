@@ -26,7 +26,7 @@ onMounted(async () => {
 </script>
 
 <style>
-/* animated multicolor gradient */
+/* Full-page animated multicolor gradient */
 .bg-digital {
   background: linear-gradient(270deg, #ff0080, #7928ca, #2afadf, #f6d365, #fda085);
   background-size: 1000% 1000%;
@@ -38,12 +38,28 @@ onMounted(async () => {
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+
+/* Neon glow effect for card */
+.glow {
+  box-shadow:
+    0 0 15px rgba(255, 0, 128, 0.6),
+    0 0 30px rgba(121, 40, 202, 0.6),
+    0 0 45px rgba(42, 250, 223, 0.6);
+  transition: box-shadow 0.5s ease-in-out;
+}
+
+.glow:hover {
+  box-shadow:
+    0 0 25px rgba(255, 0, 128, 0.9),
+    0 0 50px rgba(121, 40, 202, 0.9),
+    0 0 70px rgba(42, 250, 223, 0.9);
+}
 </style>
 
 <template>
   <main class="min-h-screen flex items-center justify-center bg-digital p-6">
     <div
-      class="bg-white/90 backdrop-blur-lg shadow-xl rounded-2xl p-8 max-w-lg w-full text-center transform transition-all duration-700 ease-out"
+      class="bg-white/90 backdrop-blur-lg rounded-2xl p-8 max-w-lg w-full text-center transform transition-all duration-700 ease-out glow"
       :class="showCard ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'"
     >
       <h1 class="text-3xl font-bold text-indigo-600 mb-6">
