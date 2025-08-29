@@ -22,7 +22,7 @@ onMounted(async () => {
 
 <template>
   <main style="font-family: ui-sans-serif, system-ui; padding: 2rem; max-width: 720px;">
-    <h1 style="margin: 0 0 1rem;">Interview Demo</h1>
+    <h1 style="margin: 0 0 1rem;">Avenit AG Interview Demo</h1>
 
     <p v-if="loading">Loading…</p>
     <p v-else-if="error">{{ error }}</p>
